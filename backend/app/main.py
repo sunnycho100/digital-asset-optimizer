@@ -82,7 +82,8 @@ async def estimate_image(
             request.output_format,
             request.max_dim,
             request.quality_mode,
-            request.quality
+            request.quality,
+            request.priority
         )
         
         return EstimateResponse(
@@ -132,7 +133,8 @@ async def compress_image(
             request.output_format,
             request.max_dim,
             request.quality_mode,
-            request.quality
+            request.quality,
+            request.priority
         )
         
         # Determine file extension
@@ -146,8 +148,7 @@ async def compress_image(
         # Generate filename
         original_name = file.filename or "image"
         name_without_ext = original_name.rsplit(".", 1)[0] if "." in original_name else original_name
-        size_mb = len(compressed_bytes) / (1024 * 1024)
-        new_filename = f"{name_without_ext}_compressed_{size_mb:.2f}MB.{ext}"
+        new_filename = f"{name_without_ext}_new.{ext}"
         
         # Determine content type
         content_type_map = {

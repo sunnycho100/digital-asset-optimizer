@@ -3,7 +3,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { EstimateRequest } from "@/types/api";
 
@@ -26,6 +26,8 @@ export function CompressionControls({
 }: CompressionControlsProps) {
   const [targetMB, setTargetMB] = useState<string>("");
   const [outputFormat, setOutputFormat] = useState<"auto" | "jpeg" | "png" | "webp">("jpeg");
+  const [priority, setPriority] = useState<"target_size" | "optimal_resolution">("target_size");
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState<string>("");
 
   const originalMB = originalSizeBytes / (1024 * 1024);
@@ -75,6 +77,7 @@ export function CompressionControls({
 
     return {
       target_bytes: targetBytes,
+      priority: priority,
       output_format: outputFormat,
       quality_mode: "auto",
     };
@@ -124,17 +127,76 @@ export function CompressionControls({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="output-format">Output Format</Label>
-          <Select
-            value={outputFormat}
-            onValueChange={(value) => setOutputFormat(value as typeof outputFormat)}
+          <Label>Priority</Label>
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="priority"
+                value="target_size"
+                checked={priority === "target_size"}
+                onChange={(e) => setPriority(e.target.value as typeof priority)}
+                disabled={disabled}
+                className="w-4 h-4"
+              />
+              <div className="flex-1">
+                <span className="text-sm font-medium">Target Size</span>
+                <p className="text-xs text-gray-500">Get as close to target size as possible</p>
+              </div>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="priority"
+                value="optimal_resolution"
+                checked={priority === "optimal_resolution"}
+                onChange={(e) => setPriority(e.target.value as typeof priority)}
+                disabled={disabled}
+                className="w-4 h-4"
+              />
+              <div className="flex-1">
+                <span className="text-sm font-medium">Optimal Resolution</span>
+                <p className="text-xs text-gray-500">Preserve resolution, may be smaller than target</p>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        {/* Advanced Options */}
+        <div className="border-t pt-4">
+          <button
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="flex items-center justify-between w-full text-sm font-medium text-gray-700 hover:text-gray-900"
             disabled={disabled}
           >
-            <option value="jpeg">JPEG (Default)</option>
-            <option value="webp">WebP (Best Compression)</option>
-            <option value="png">PNG (Lossless)</option>
-            <option value="auto">Auto</option>
-          </Select>
+            <span>Advanced Options</span>
+            {showAdvanced ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+          </button>
+          
+          {showAdvanced && (
+            <div className="mt-4 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="output-format">Output Format</Label>
+                <Select
+                  value={outputFormat}
+                  onValueChange={(value) => setOutputFormat(value as typeof outputFormat)}
+                  disabled={disabled}
+                >
+                  <option value="jpeg">JPEG (Default)</option>
+                  <option value="webp">WebP (Best Compression)</option>
+                  <option value="png">PNG (Lossless)</option>
+                  <option value="auto">Auto</option>
+                </Select>
+                <p className="text-xs text-gray-500">
+                  Choose the output file format for the compressed image
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex gap-2 pt-2">

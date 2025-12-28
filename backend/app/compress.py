@@ -73,10 +73,14 @@ def compress_to_target(
     output_format: str = "auto",
     max_dim: Optional[int] = None,
     quality_mode: str = "auto",
-    manual_quality: Optional[int] = None
+    manual_quality: Optional[int] = None,
+    priority: str = "target_size"
 ) -> Tuple[bytes, int, int, str, list]:
     """
     Compress image to target size using binary search and progressive resizing.
+    
+    priority: "target_size" = get as close to target as possible without going over
+              "optimal_resolution" = preserve resolution, even if result is much smaller
     
     Returns: (compressed_bytes, width, height, format, warnings)
     """
@@ -97,11 +101,17 @@ def compress_to_target(
     if original_size <= target_bytes and chosen_format == original_format.upper():
         return image_bytes, original_width, original_height, chosen_format, warnings
     
-    # Try different resize scales: 100%, 90%, 80%, 70%, 60%, 50%
-    resize_scales = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5]
+    # Try different resize scales based on priority
+    if priority == "optimal_resolution":
+        # Preserve resolution, only reduce quality
+        resize_scales = [1.0]
+    else:
+        # Try progressive resizing for target size priority
+        resize_scales = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5]
     
     best_result = None
     best_size = float('inf')
+    best_distance_from_target = float('inf')
     
     for scale in resize_scales:
         # Calculate new dimensions
@@ -122,32 +132,47 @@ def compress_to_target(
                 compressed = convert_image_to_bytes(working_img, chosen_format, quality)
                 size = len(compressed)
                 
-                if size <= target_bytes and size < best_size:
-                    best_result = (compressed, new_width, new_height)
-                    best_size = size
-                    if size <= target_bytes:
-                        break
+                if size <= target_bytes:
+                    distance = target_bytes - size
+                    if distance < best_distance_from_target:
+                        best_result = (compressed, new_width, new_height)
+                        best_size = size
+                        best_distance_from_target = distance
             else:
-                # Binary search quality
+                # Binary search quality to find closest to target
                 low_q, high_q = 40, 95
-                quality_found = None
+                scale_best_result = None
+                scale_best_distance = float('inf')
                 
-                for _ in range(8):  # Max 8 iterations
+                for _ in range(10):  # More iterations for better accuracy
                     mid_q = (low_q + high_q) // 2
                     compressed = convert_image_to_bytes(working_img, chosen_format, mid_q)
                     size = len(compressed)
                     
                     if size <= target_bytes:
-                        quality_found = mid_q
-                        if size < best_size:
-                            best_result = (compressed, new_width, new_height)
-                            best_size = size
+                        distance = target_bytes - size
+                        # For target_size priority, prefer closer to target
+                        # For optimal_resolution priority, just need to be under target
+                        if distance < scale_best_distance:
+                            scale_best_result = (compressed, new_width, new_height, size)
+                            scale_best_distance = distance
                         low_q = mid_q + 1
                     else:
                         high_q = mid_q - 1
                 
-                # If we found a quality that works, we can stop
-                if best_size <= target_bytes:
+                # Update global best if this scale produced better result
+                if scale_best_result and scale_best_distance < best_distance_from_target:
+                    compressed, w, h, size = scale_best_result
+                    best_result = (compressed, w, h)
+                    best_size = size
+                    best_distance_from_target = scale_best_distance
+                
+                # For target_size priority, stop if we're very close to target (within 5%)
+                if priority == "target_size" and best_distance_from_target < target_bytes * 0.05:
+                    break
+                
+                # For optimal_resolution, stop after first scale if we found something
+                if priority == "optimal_resolution" and best_result:
                     break
         else:
             # PNG - lossless, just try optimize
@@ -184,7 +209,8 @@ def estimate_compression(
     output_format: str = "auto",
     max_dim: Optional[int] = None,
     quality_mode: str = "auto",
-    manual_quality: Optional[int] = None
+    manual_quality: Optional[int] = None,
+    priority: str = "target_size"
 ) -> Tuple[int, int, int, str, list]:
     """
     Estimate compression results without returning the full compressed bytes.
@@ -193,7 +219,7 @@ def estimate_compression(
     """
     # For estimation, we actually compress but return metadata only
     compressed_bytes, width, height, format, warnings = compress_to_target(
-        image_bytes, target_bytes, output_format, max_dim, quality_mode, manual_quality
+        image_bytes, target_bytes, output_format, max_dim, quality_mode, manual_quality, priority
     )
     
     return width, height, len(compressed_bytes), format, warnings

@@ -13,6 +13,7 @@ export interface EstimateRequest {
   max_dim?: number;
   quality_mode: "auto" | "manual";
   quality?: number;
+  priority: "target_size" | "optimal_resolution";
 }
 
 export interface EstimateResponse {
