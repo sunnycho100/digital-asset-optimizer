@@ -177,11 +177,12 @@ export function App() {
                 <Button
                   onClick={handleReset}
                   variant="outline"
-                  className="w-full"
+                  className="w-full text-base py-6"
                 >
-                  <RotateCcw className="w-4 h-4 mr-2" />
+                  <RotateCcw className="w-5 h-5 mr-2" />
                   Start Over
                 </Button>
+                {metadata && <MetadataPanel metadata={metadata} />}
               </>
             )}
           </div>
@@ -209,8 +210,6 @@ export function App() {
 
             {metadata && (
               <>
-                <MetadataPanel metadata={metadata} />
-                
                 <CompressionControls
                   originalSizeBytes={metadata.size_bytes}
                   onEstimate={handleEstimate}
@@ -256,6 +255,14 @@ export function App() {
         {/* Footer */}
         <div className="mt-12 text-center text-sm text-gray-500">
           <p>All processing happens locally. Your images never leave your device.</p>
+          <p className="mt-2">
+            <a 
+              href="mailto:shcho1551@gmail.com?subject=Image%20Compressor%20Inquiry"
+              className="text-blue-600 hover:text-blue-800 underline"
+            >
+              Contact Us
+            </a>
+          </p>
         </div>
       </div>
     </div>

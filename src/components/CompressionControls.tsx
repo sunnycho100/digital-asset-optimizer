@@ -26,7 +26,6 @@ export function CompressionControls({
   const [targetMB, setTargetMB] = useState<string>("1");
   const [outputFormat, setOutputFormat] = useState<"auto" | "jpeg" | "png" | "webp">("jpeg");
   const [priority, setPriority] = useState<"target_size" | "optimal_resolution">("target_size");
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState<string>("");
 
   const originalMB = originalSizeBytes / (1024 * 1024);
@@ -132,9 +131,9 @@ export function CompressionControls({
           )}
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-3">
           <Label>Priority</Label>
-          <div className="space-y-2">
+          <div className="space-y-3">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="radio"
@@ -147,7 +146,7 @@ export function CompressionControls({
               />
               <div className="flex-1">
                 <span className="text-sm font-medium">Target Size</span>
-                <p className="text-xs text-gray-500">Get as close to target size as possible</p>
+                <p className="text-xs text-gray-500">May reduce quality or resolution to meet size</p>
               </div>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
@@ -162,49 +161,29 @@ export function CompressionControls({
               />
               <div className="flex-1">
                 <span className="text-sm font-medium">Optimal Resolution</span>
-                <p className="text-xs text-gray-500">Preserve resolution, may be smaller than target</p>
+                <p className="text-xs text-gray-500">Keeps resolution, may exceed target</p>
               </div>
             </label>
           </div>
         </div>
 
-        {/* Advanced Options */}
-        <div className="border-t pt-4">
-          <button
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            className="flex items-center justify-between w-full text-sm font-medium text-gray-700 hover:text-gray-900"
+        <div className="space-y-2">
+          <Label htmlFor="output-format">Output Format</Label>
+          <select
+            id="output-format"
+            value={outputFormat}
+            onChange={(e) => setOutputFormat(e.target.value as typeof outputFormat)}
             disabled={disabled}
+            className="w-full h-10 rounded-lg border border-input bg-transparent px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <span>Advanced Options</span>
-            {showAdvanced ? (
-              <ChevronUp className="w-4 h-4" />
-            ) : (
-              <ChevronDown className="w-4 h-4" />
-            )}
-          </button>
-          
-          {showAdvanced && (
-            <div className="mt-4 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="output-format">Output Format</Label>
-                <select
-                  id="output-format"
-                  value={outputFormat}
-                  onChange={(e) => setOutputFormat(e.target.value as typeof outputFormat)}
-                  disabled={disabled}
-                  className="w-full h-10 rounded-lg border border-input bg-transparent px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value="jpeg">JPEG (Default)</option>
-                  <option value="webp">WebP (Best Compression)</option>
-                  <option value="png">PNG (Lossless)</option>
-                  <option value="auto">Auto</option>
-                </select>
-                <p className="text-xs text-gray-500">
-                  Choose the output file format for the compressed image
-                </p>
-              </div>
-            </div>
-          )}
+            <option value="jpeg">JPEG (Default)</option>
+            <option value="webp">WebP (Best Compression)</option>
+            <option value="png">PNG (Lossless)</option>
+            <option value="auto">Auto</option>
+          </select>
+          <p className="text-xs text-gray-500">
+            Choose the output file format for the compressed image
+          </p>
         </div>
 
         <div className="flex gap-2 pt-2">

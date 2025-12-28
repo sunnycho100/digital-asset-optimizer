@@ -36,7 +36,13 @@ FRONTEND_PID=$!
 echo -e "\n${GREEN}✓ Both servers started!${NC}"
 echo -e "${BLUE}Frontend: http://localhost:5173${NC}"
 echo -e "${BLUE}Backend:  http://localhost:8000${NC}"
-echo -e "\nPress Ctrl+C to stop both servers\n"
+echo -e "\n${GREEN}Opening browser...${NC}\n"
+
+# Open frontend in default browser
+sleep 1
+open http://localhost:5173
+
+echo -e "Press Ctrl+C to stop both servers\n"
 
 # Handle cleanup on exit
 trap "kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; exit" INT TERM
