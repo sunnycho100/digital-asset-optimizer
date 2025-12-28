@@ -6,7 +6,8 @@ A privacy-preserving local web application for compressing images to a target fi
 
 - **Drag & Drop / Paste Support**: Easily upload images by dragging, clicking, or pasting (Ctrl+V)
 - **Multiple Formats**: Support for JPEG, PNG, and WebP input/output
-- **Target Size Compression**: Specify exact target file size in MB
+- **Target Size Compression**: Specify target file size in MB (defaults to 1 MB)
+- **Priority Modes**: Choose between size-first or resolution-first optimization
 - **Smart Compression**: Automatic format selection and quality optimization
 - **Preview & Metadata**: See image preview and detailed metadata before compression
 - **Prediction**: Preview estimated output size and dimensions before compressing
@@ -97,9 +98,25 @@ npm install
 
 ## Running the Application
 
-You need to run both the backend and frontend servers.
+### Quick Start (Recommended)
 
-### 1. Start the Backend Server
+Use the provided start script to launch both servers and open the app automatically:
+
+```bash
+./start.sh
+```
+
+This will:
+- Start the backend server on port 8000
+- Start the frontend dev server on port 5173
+- Automatically open the app in your default browser
+- Allow you to stop both servers with a single Ctrl+C
+
+### Manual Start
+
+Alternatively, you can run both servers manually:
+
+#### 1. Start the Backend Server
 
 In the `backend/` directory with the virtual environment activated:
 
@@ -122,12 +139,15 @@ The app will be available at `http://localhost:5173`
 ## Usage
 
 1. **Upload an Image**: Drag and drop an image, click to browse, or paste (Ctrl+V) an image from your clipboard
-2. **View Metadata**: See the original file size, resolution, and format
-3. **Set Target Size**: Enter your desired file size in MB (must be smaller than original)
-4. **Choose Format**: Select output format (Auto recommended) - WebP, JPEG, or PNG
-5. **Preview Results**: Click "Preview Results" to see estimated output
-6. **Compress**: Click "Compress" to process the image
-7. **Download**: Download your compressed image
+2. **View Metadata**: See the original file size, resolution, and format in the left panel
+3. **Set Target Size**: Enter your desired file size in MB (defaults to 1 MB, must be smaller than original)
+4. **Choose Priority Mode**:
+   - **Target Size**: May reduce quality or resolution to meet size goal
+   - **Optimal Resolution**: Preserves resolution, may exceed target size
+5. **Select Output Format**: Choose JPEG (default), WebP, PNG, or Auto
+6. **Preview Results**: Click "Preview Results" to see estimated output
+7. **Compress**: Click "Compress" to process the image
+8. **Download**: Download your compressed image (saved as `filename_new.ext`)
 
 ## API Endpoints
 
@@ -148,12 +168,15 @@ Compress image and return file
 
 ## Compression Algorithm
 
-The backend uses an intelligent compression strategy:
+The backend uses an intelligent dual-mode compression strategy:
 
-1. **Format Selection**: Automatically chooses the best format (WebP for aggressive compression, preserves format when possible)
-2. **Progressive Resizing**: Tries multiple resize scales (100%, 90%, 80%, 70%, 60%, 50%)
-3. **Quality Binary Search**: For lossy formats (JPEG/WebP), performs binary search on quality settings (40-95)
-4. **Best Effort**: Returns the closest result with warnings if exact target cannot be met
+1. **Priority Mode Selection**:
+   - **Target Size**: Aggressively reduces resolution and quality to meet target
+   - **Optimal Resolution**: Preserves dimensions, adjusts quality only
+2. **Format Selection**: Automatically chooses the best format (WebP for aggressive compression, preserves format when possible)
+3. **Progressive Resizing**: Tries multiple resize scales (100%, 90%, 80%, 70%, 60%, 50%) based on priority mode
+4. **Quality Binary Search**: For lossy formats (JPEG/WebP), performs binary search on quality settings (40-95)
+5. **Best Effort**: Returns the closest result with warnings if exact target cannot be met
 
 ## Privacy & Security
 
