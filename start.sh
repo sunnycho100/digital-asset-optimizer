@@ -43,7 +43,7 @@ sleep 1
 open http://localhost:5173
 
 echo -e "Press Ctrl+C to stop both servers\n"
-bash start.sh
+
 # Handle cleanup on exit
 trap "kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; exit" INT TERM
 
