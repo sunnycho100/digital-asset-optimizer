@@ -1,7 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -24,7 +23,7 @@ export function CompressionControls({
   isCompressing,
   disabled,
 }: CompressionControlsProps) {
-  const [targetMB, setTargetMB] = useState<string>("");
+  const [targetMB, setTargetMB] = useState<string>("1");
   const [outputFormat, setOutputFormat] = useState<"auto" | "jpeg" | "png" | "webp">("jpeg");
   const [priority, setPriority] = useState<"target_size" | "optimal_resolution">("target_size");
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -109,12 +108,19 @@ export function CompressionControls({
           <Label htmlFor="target-size">Target Size (MB)</Label>
           <Input
             id="target-size"
-            type="number"
-            step="0.01"
-            min="0.01"
-            max={originalMB}
-            placeholder={`Max: ${originalMB.toFixed(2)} MB`}
-            value={targetMB}
+            type="text"
+            placeholder={targetMB === "1" ? "1 (default)" : `Max: ${originalMB.toFixed(2)} MB`}
+            value={targetMB === "1" ? "" : targetMB}
+            onFocus={(e) => {
+              if (targetMB === "1") {
+                setTargetMB("");
+              }
+            }}
+            onBlur={(e) => {
+              if (e.target.value.trim() === "") {
+                setTargetMB("1");
+              }
+            }}
             onChange={(e) => setTargetMB(e.target.value)}
             disabled={disabled}
           />
@@ -181,16 +187,18 @@ export function CompressionControls({
             <div className="mt-4 space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="output-format">Output Format</Label>
-                <Select
+                <select
+                  id="output-format"
                   value={outputFormat}
-                  onValueChange={(value) => setOutputFormat(value as typeof outputFormat)}
+                  onChange={(e) => setOutputFormat(e.target.value as typeof outputFormat)}
                   disabled={disabled}
+                  className="w-full h-10 rounded-lg border border-input bg-transparent px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value="jpeg">JPEG (Default)</option>
                   <option value="webp">WebP (Best Compression)</option>
                   <option value="png">PNG (Lossless)</option>
                   <option value="auto">Auto</option>
-                </Select>
+                </select>
                 <p className="text-xs text-gray-500">
                   Choose the output file format for the compressed image
                 </p>
