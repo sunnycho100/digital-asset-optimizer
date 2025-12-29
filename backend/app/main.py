@@ -95,7 +95,8 @@ async def estimate_image(
             request.max_dim,
             request.quality_mode,
             request.quality,
-            request.priority
+            request.priority,
+            request.strip_exif
         )
         
         return EstimateResponse(
@@ -153,15 +154,78 @@ async def compress_image(
             )
         
         # Perform compression
-        compressed_bytes, width, height, chosen_format, warnings = compress_to_target(
-            image_bytes,
-            request.target_bytes,
-            request.output_format,
-            request.max_dim,
-            request.quality_mode,
-            request.quality,
-            request.priority
-        )
+        try:
+            compressed_bytes, width, height, chosen_format, warnings = compress_to_target(
+                image_bytes,
+                request.target_bytes,
+                request.output_format,
+                request.max_dim,
+                request.quality_mode,
+                request.quality,
+                request.priority,
+                request.strip_exif
+            )
+        except (UnicodeEncodeError, UnicodeDecodeError, LookupError) as encoding_error:
+            # If encoding fails even with strip_exif, try forcing JPEG format
+            # JPEG is more lenient with encoding issues and doesn't support EXIF the same way
+            if request.strip_exif and request.output_format != "jpeg":
+                try:
+                    compressed_bytes, width, height, chosen_format, warnings = compress_to_target(
+                        image_bytes,
+                        request.target_bytes,
+                        "jpeg",  # Force JPEG format
+                        request.max_dim,
+                        request.quality_mode,
+                        request.quality,
+                        request.priority,
+                        True  # Keep strip_exif=True
+                    )
+                    # Add warning that format was changed
+                    if "Automatically converted to JPEG to resolve encoding issues" not in warnings:
+                        warnings.append("Automatically converted to JPEG to resolve encoding issues")
+                except Exception as retry_error:
+                    # If still fails, re-raise original error
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Unable to compress this image due to encoding issues. Try removing metadata or converting the image format first."
+                    )
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Unable to compress this image due to encoding issues. Try removing metadata or converting the image format first."
+                )
+        except Exception as general_error:
+            # Catch any other errors during compression
+            error_msg = str(general_error)
+            if 'codec' in error_msg.lower() or 'encode' in error_msg.lower() or 'unicode' in error_msg.lower():
+                # This is an encoding issue, suggest stripping EXIF
+                if not request.strip_exif:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Unable to compress this image due to special characters in metadata. Try removing EXIF data or converting the image format first."
+                    )
+                else:
+                    # Already tried stripping, try JPEG conversion as last resort
+                    try:
+                        compressed_bytes, width, height, chosen_format, warnings = compress_to_target(
+                            image_bytes,
+                            request.target_bytes,
+                            "jpeg",
+                            request.max_dim,
+                            request.quality_mode,
+                            request.quality,
+                            request.priority,
+                            True
+                        )
+                        warnings.append("Automatically converted to JPEG to resolve encoding issues")
+                    except:
+                        raise HTTPException(
+                            status_code=400,
+                            detail="Unable to compress this image. Please try a different image or format."
+                        )
+            else:
+                # Re-raise for other types of errors
+                raise
         
         # Determine file extension
         ext_map = {

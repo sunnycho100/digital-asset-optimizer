@@ -20,6 +20,8 @@ export function App() {
   const [isEstimating, setIsEstimating] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
   const [error, setError] = useState<string>("");
+  const [exifError, setExifError] = useState(false);
+  const [pendingCompressParams, setPendingCompressParams] = useState<EstimateRequest | null>(null);
 
   // Handle file selection
   const handleFileSelect = async (file: File) => {
@@ -70,6 +72,8 @@ export function App() {
     if (!selectedFile) return;
 
     setError("");
+    setExifError(false);
+    setPendingCompressParams(null);
     setIsCompressing(true);
     setCompressedResult(null);
 
@@ -87,7 +91,46 @@ export function App() {
       });
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Failed to compress image";
+      
+      // Check if it's an EXIF-related error
+      if (message.includes("special characters in metadata") || message.includes("encoding issues")) {
+        setExifError(true);
+        setPendingCompressParams(params);
+      }
+      
       setError(message);
+    } finally {
+      setIsCompressing(false);
+    }
+  };
+
+  // Handle retry compression with EXIF stripping
+  const handleRetryWithoutExif = async () => {
+    if (!pendingCompressParams || !selectedFile) return;
+
+    setError("");
+    setExifError(false);
+    setIsCompressing(true);
+
+    try {
+      const params = { ...pendingCompressParams, strip_exif: true };
+      const result = await compressImage(selectedFile, params);
+      setCompressedResult(result);
+      setPendingCompressParams(null);
+      
+      // Also update estimate to show actual results
+      setEstimate({
+        predicted_width: result.width,
+        predicted_height: result.height,
+        estimated_size_bytes: result.size_bytes,
+        chosen_format: result.format,
+        warnings: result.warnings,
+      });
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : "Failed to compress image";
+      setError(message);
+      setExifError(false);
+      setPendingCompressParams(null);
     } finally {
       setIsCompressing(false);
     }
@@ -204,6 +247,21 @@ export function App() {
               <Card className="border-red-200 bg-red-50">
                 <CardContent className="py-4">
                   <p className="text-sm text-red-800">{error}</p>
+                  {exifError && (
+                    <>
+                      <p className="text-sm text-red-700 mt-3">
+                        Press Continue to remove EXIF data and compress
+                      </p>
+                      <Button 
+                        onClick={handleRetryWithoutExif}
+                        className="mt-3 w-full"
+                        variant="destructive"
+                        disabled={isCompressing}
+                      >
+                        {isCompressing ? "Processing..." : "Continue"}
+                      </Button>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             )}

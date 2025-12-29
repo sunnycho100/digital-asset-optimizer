@@ -18,6 +18,7 @@ class EstimateRequest(BaseModel):
     quality_mode: Literal["auto", "manual"] = "auto"
     quality: Optional[int] = Field(default=None, ge=1, le=100)
     priority: Literal["target_size", "optimal_resolution"] = "target_size"
+    strip_exif: bool = False
 
 
 class EstimateResponse(BaseModel):

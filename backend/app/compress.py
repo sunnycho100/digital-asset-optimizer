@@ -74,7 +74,8 @@ def compress_to_target(
     max_dim: Optional[int] = None,
     quality_mode: str = "auto",
     manual_quality: Optional[int] = None,
-    priority: str = "target_size"
+    priority: str = "target_size",
+    strip_exif: bool = False
 ) -> Tuple[bytes, int, int, str, list]:
     """
     Compress image to target size using binary search and progressive resizing.
@@ -129,7 +130,7 @@ def compress_to_target(
         if chosen_format in ["JPEG", "WEBP"]:
             if quality_mode == "manual" and manual_quality is not None:
                 quality = manual_quality
-                compressed = convert_image_to_bytes(working_img, chosen_format, quality)
+                compressed = convert_image_to_bytes(working_img, chosen_format, quality, strip_exif=strip_exif)
                 size = len(compressed)
                 
                 if size <= target_bytes:
@@ -146,7 +147,7 @@ def compress_to_target(
                 
                 for _ in range(10):  # More iterations for better accuracy
                     mid_q = (low_q + high_q) // 2
-                    compressed = convert_image_to_bytes(working_img, chosen_format, mid_q)
+                    compressed = convert_image_to_bytes(working_img, chosen_format, mid_q, strip_exif=strip_exif)
                     size = len(compressed)
                     
                     if size <= target_bytes:
@@ -176,7 +177,7 @@ def compress_to_target(
                     break
         else:
             # PNG - lossless, just try optimize
-            compressed = convert_image_to_bytes(working_img, chosen_format, quality=95)
+            compressed = convert_image_to_bytes(working_img, chosen_format, quality=95, strip_exif=strip_exif)
             size = len(compressed)
             
             if size < best_size:
@@ -192,7 +193,7 @@ def compress_to_target(
             original_width, original_height, max_dim, 0.5
         )
         working_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
-        compressed = convert_image_to_bytes(working_img, chosen_format, quality=40)
+        compressed = convert_image_to_bytes(working_img, chosen_format, quality=40, strip_exif=strip_exif)
         best_result = (compressed, new_width, new_height)
         warnings.append("Could not reach target size. This is the best effort result.")
     elif best_size > target_bytes:
@@ -210,7 +211,8 @@ def estimate_compression(
     max_dim: Optional[int] = None,
     quality_mode: str = "auto",
     manual_quality: Optional[int] = None,
-    priority: str = "target_size"
+    priority: str = "target_size",
+    strip_exif: bool = False
 ) -> Tuple[int, int, int, str, list]:
     """
     Estimate compression results without returning the full compressed bytes.
@@ -219,7 +221,7 @@ def estimate_compression(
     """
     # For estimation, we actually compress but return metadata only
     compressed_bytes, width, height, format, warnings = compress_to_target(
-        image_bytes, target_bytes, output_format, max_dim, quality_mode, manual_quality, priority
+        image_bytes, target_bytes, output_format, max_dim, quality_mode, manual_quality, priority, strip_exif
     )
     
     return width, height, len(compressed_bytes), format, warnings

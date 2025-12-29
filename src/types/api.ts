@@ -14,6 +14,7 @@ export interface EstimateRequest {
   quality_mode: "auto" | "manual";
   quality?: number;
   priority: "target_size" | "optimal_resolution";
+  strip_exif?: boolean;
 }
 
 export interface EstimateResponse {
