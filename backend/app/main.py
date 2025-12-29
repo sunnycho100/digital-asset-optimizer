@@ -5,7 +5,7 @@ from typing import Optional
 import json
 
 from .models import InspectResponse, EstimateRequest, EstimateResponse, CompressResponse
-from .utils import get_image_info
+from .utils import get_image_info, calculate_minimum_achievable_size
 from .compress import compress_to_target, estimate_compression
 
 app = FastAPI(title="Image Compressor API")
@@ -68,11 +68,23 @@ async def estimate_image(
         params_dict = json.loads(params)
         request = EstimateRequest(**params_dict)
         
+        original_size = len(image_bytes)
+        target_size = request.target_bytes
+        
         # Validate target is smaller than original
-        if request.target_bytes >= len(image_bytes):
+        if target_size >= original_size:
             raise HTTPException(
                 status_code=400,
-                detail=f"Target size ({request.target_bytes} bytes) must be smaller than original ({len(image_bytes)} bytes)"
+                detail=f"Target size must be smaller than original size. Original: {original_size:,} bytes, Target: {target_size:,} bytes"
+            )
+        
+        # Calculate minimum achievable size based on image characteristics
+        min_size = calculate_minimum_achievable_size(image_bytes)
+        
+        if target_size < min_size:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Target size is too small. Original: {original_size:,} bytes ({original_size/1024:.1f} KB), Target: {target_size:,} bytes ({target_size/1024:.2f} KB). Recommended minimum: {min_size:,} bytes ({min_size/1024:.1f} KB)"
             )
         
         # Perform estimation
@@ -98,7 +110,9 @@ async def estimate_image(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to estimate: {str(e)}")
+        # Ensure error message is ASCII-safe to avoid encoding issues
+        error_msg = str(e).encode('ascii', errors='replace').decode('ascii')
+        raise HTTPException(status_code=400, detail=f"Failed to estimate: {error_msg}")
 
 
 @app.post("/api/compress")
@@ -119,11 +133,23 @@ async def compress_image(
         params_dict = json.loads(params)
         request = EstimateRequest(**params_dict)
         
+        original_size = len(image_bytes)
+        target_size = request.target_bytes
+        
         # Validate target is smaller than original
-        if request.target_bytes >= len(image_bytes):
+        if target_size >= original_size:
             raise HTTPException(
                 status_code=400,
-                detail=f"Target size ({request.target_bytes} bytes) must be smaller than original ({len(image_bytes)} bytes)"
+                detail=f"Target size must be smaller than original size. Original: {original_size:,} bytes, Target: {target_size:,} bytes"
+            )
+        
+        # Calculate minimum achievable size based on image characteristics
+        min_size = calculate_minimum_achievable_size(image_bytes)
+        
+        if target_size < min_size:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Target size is too small. Original: {original_size:,} bytes ({original_size/1024:.1f} KB), Target: {target_size:,} bytes ({target_size/1024:.2f} KB). Recommended minimum: {min_size:,} bytes ({min_size/1024:.1f} KB)"
             )
         
         # Perform compression
@@ -176,7 +202,9 @@ async def compress_image(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to compress: {str(e)}")
+        # Ensure error message is ASCII-safe to avoid encoding issues
+        error_msg = str(e).encode('ascii', errors='replace').decode('ascii')
+        raise HTTPException(status_code=400, detail=f"Failed to compress: {error_msg}")
 
 
 if __name__ == "__main__":
