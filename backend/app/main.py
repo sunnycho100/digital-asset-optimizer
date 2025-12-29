@@ -201,9 +201,21 @@ async def compress_image(
         raise HTTPException(status_code=400, detail="Invalid JSON in params")
     except HTTPException:
         raise
+    except UnicodeEncodeError:
+        raise HTTPException(
+            status_code=400, 
+            detail="Unable to compress this image due to special characters in metadata. Try removing EXIF data or converting the image format first."
+        )
     except Exception as e:
+        # Check if it's an encoding-related error
+        error_str = str(e)
+        if 'codec' in error_str.lower() or 'encode' in error_str.lower() or 'unicode' in error_str.lower():
+            raise HTTPException(
+                status_code=400,
+                detail="Unable to compress this image due to encoding issues. Try removing metadata or converting the image format first."
+            )
         # Ensure error message is ASCII-safe to avoid encoding issues
-        error_msg = str(e).encode('ascii', errors='replace').decode('ascii')
+        error_msg = error_str.encode('ascii', errors='replace').decode('ascii')
         raise HTTPException(status_code=400, detail=f"Failed to compress: {error_msg}")
 
 

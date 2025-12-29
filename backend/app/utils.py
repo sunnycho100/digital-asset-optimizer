@@ -50,6 +50,12 @@ def convert_image_to_bytes(img: Image.Image, format: str, quality: int = 85, **k
     """Convert PIL Image to bytes with specified format and quality."""
     output = BytesIO()
     
+    # Create a clean copy without problematic metadata to avoid encoding issues
+    img_data = img.getdata()
+    clean_img = Image.new(img.mode, img.size)
+    clean_img.putdata(img_data)
+    img = clean_img
+    
     save_kwargs = {}
     
     if format.upper() in ["JPEG", "JPG"]:
@@ -69,7 +75,14 @@ def convert_image_to_bytes(img: Image.Image, format: str, quality: int = 85, **k
         save_kwargs["quality"] = quality
         save_kwargs["method"] = 6  # Best compression
     
-    img.save(output, format=format, **save_kwargs)
+    # Save without EXIF and other metadata to avoid encoding issues
+    try:
+        img.save(output, format=format, **save_kwargs)
+    except (UnicodeEncodeError, UnicodeDecodeError, LookupError):
+        # If encoding fails, strip all metadata and try again
+        save_kwargs["exif"] = b""  # Empty EXIF
+        img.save(output, format=format, **save_kwargs)
+    
     return output.getvalue()
 
 
