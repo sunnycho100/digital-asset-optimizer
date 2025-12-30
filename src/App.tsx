@@ -200,9 +200,31 @@ export function App() {
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Header */}
         <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Image Compressor
-          </h1>
+          <div className="relative mb-2">
+            <h1 className="text-4xl font-bold text-gray-900">
+              Image Compressor
+            </h1>
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 hidden sm:block">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled
+                className="whitespace-nowrap"
+              >
+                Image Type Converter (in progress)
+              </Button>
+            </div>
+            <div className="sm:hidden mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled
+                className="whitespace-nowrap"
+              >
+                Image Type Converter (in progress)
+              </Button>
+            </div>
+          </div>
           <p className="text-gray-600">
             Privacy-preserving local image compression tool
           </p>
