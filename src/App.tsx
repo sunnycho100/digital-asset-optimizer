@@ -5,12 +5,16 @@ import { PreviewCard } from "@/components/PreviewCard";
 import { MetadataPanel } from "@/components/MetadataPanel";
 import { CompressionControls } from "@/components/CompressionControls";
 import { PredictionPanel } from "@/components/PredictionPanel";
+import { ImageTypeConverter } from "@/components/ImageTypeConverter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { inspectImage, estimateCompression, compressImage, ApiError } from "@/api/client";
 import type { InspectResponse, EstimateRequest, EstimateResponse, CompressResult } from "@/types/api";
 
+type View = "compressor" | "converter";
+
 export function App() {
+  const [currentView, setCurrentView] = useState<View>("compressor");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const [metadata, setMetadata] = useState<InspectResponse | null>(null);
@@ -202,38 +206,41 @@ export function App() {
         <div className="mb-8 text-center">
           <div className="relative mb-2">
             <h1 className="text-4xl font-bold text-gray-900">
-              Image Compressor
+              {currentView === "compressor" ? "Image Compressor" : "Image Type Converter"}
             </h1>
             <div className="absolute right-0 top-1/2 -translate-y-1/2 hidden sm:block">
               <Button
                 variant="outline"
                 size="sm"
-                disabled
+                onClick={() => setCurrentView(currentView === "compressor" ? "converter" : "compressor")}
                 className="whitespace-nowrap"
               >
-                Image Type Converter (in progress)
+                {currentView === "compressor" ? "Image Type Converter" : "Image Compressor"}
               </Button>
             </div>
             <div className="sm:hidden mt-4">
               <Button
                 variant="outline"
                 size="sm"
-                disabled
+                onClick={() => setCurrentView(currentView === "compressor" ? "converter" : "compressor")}
                 className="whitespace-nowrap"
               >
-                Image Type Converter (in progress)
+                {currentView === "compressor" ? "Image Type Converter" : "Image Compressor"}
               </Button>
             </div>
           </div>
           <p className="text-gray-600">
-            Privacy-preserving local image compression tool
+            {currentView === "compressor" 
+              ? "Privacy-preserving local image compression tool"
+              : "Privacy-preserving local image type conversion tool"}
           </p>
         </div>
 
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Column */}
-          <div className="space-y-6">
+        {/* Main Content - Conditional Rendering */}
+        {currentView === "compressor" ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left Column */}
+            <div className="space-y-6">
             {!selectedFile ? (
               <DropZone onFileSelect={handleFileSelect} />
             ) : (
@@ -331,6 +338,9 @@ export function App() {
             )}
           </div>
         </div>
+        ) : (
+          <ImageTypeConverter />
+        )}
 
         {/* Footer */}
         <div className="mt-12 text-center text-sm text-gray-500">
