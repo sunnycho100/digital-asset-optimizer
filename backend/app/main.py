@@ -116,6 +116,114 @@ async def estimate_image(
         raise HTTPException(status_code=400, detail=f"Failed to estimate: {error_msg}")
 
 
+@app.post("/api/convert")
+async def convert_image_format(
+    file: UploadFile = File(...),
+    output_format: str = Form(...),
+    strip_exif: bool = Form(False)
+):
+    """
+    Convert image to specified format.
+    """
+    try:
+        image_bytes = await file.read()
+        
+        if len(image_bytes) == 0:
+            raise HTTPException(status_code=400, detail="Empty file uploaded")
+        
+        # Open image
+        from PIL import Image
+        from io import BytesIO
+        from .utils import convert_image_to_bytes
+        
+        img = Image.open(BytesIO(image_bytes))
+        
+        # Validate format
+        valid_formats = ["jpeg", "png", "webp", "bmp", "gif", "tiff"]
+        if output_format.lower() not in valid_formats:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid output format. Supported formats: {', '.join(valid_formats)}"
+            )
+        
+        # Convert format
+        warnings = []
+        format_upper = output_format.upper()
+        
+        # Handle format-specific conversions
+        if format_upper == "JPEG" and img.mode in ("RGBA", "LA", "P"):
+            warnings.append("Image has transparency. Converting to RGB with white background.")
+            if img.mode == "P":
+                img = img.convert("RGBA")
+            rgb_img = Image.new("RGB", img.size, (255, 255, 255))
+            if img.mode in ("RGBA", "LA"):
+                rgb_img.paste(img, mask=img.split()[-1])
+            else:
+                rgb_img.paste(img)
+            img = rgb_img
+        elif format_upper in ["PNG", "WEBP"] and img.mode not in ["RGB", "RGBA"]:
+            # Convert to RGBA for PNG/WebP if needed
+            if img.mode in ["L", "LA"]:
+                img = img.convert("LA")
+            elif "transparency" in img.info or img.mode == "P":
+                img = img.convert("RGBA")
+            else:
+                img = img.convert("RGB")
+        
+        # Convert image to bytes
+        quality = 95 if format_upper != "PNG" else None
+        converted_bytes = convert_image_to_bytes(
+            img,
+            format_upper,
+            quality=quality or 95,
+            strip_exif=strip_exif
+        )
+        
+        # Generate filename
+        original_name = file.filename or "image"
+        name_without_ext = original_name.rsplit(".", 1)[0]
+        ext_map = {
+            "JPEG": "jpg",
+            "PNG": "png",
+            "WEBP": "webp",
+            "BMP": "bmp",
+            "GIF": "gif",
+            "TIFF": "tiff"
+        }
+        new_filename = f"{name_without_ext}_converted.{ext_map.get(format_upper, format_upper.lower())}"
+        
+        # Prepare response headers
+        headers = {
+            "Content-Disposition": f'attachment; filename="{new_filename}"',
+            "X-Width": str(img.width),
+            "X-Height": str(img.height),
+            "X-Size-Bytes": str(len(converted_bytes)),
+            "X-Format": format_upper,
+            "X-Warnings": json.dumps(warnings)
+        }
+        
+        media_type_map = {
+            "JPEG": "image/jpeg",
+            "PNG": "image/png",
+            "WEBP": "image/webp",
+            "BMP": "image/bmp",
+            "GIF": "image/gif",
+            "TIFF": "image/tiff"
+        }
+        
+        return Response(
+            content=converted_bytes,
+            media_type=media_type_map.get(format_upper, "application/octet-stream"),
+            headers=headers
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        error_msg = str(e).encode('ascii', errors='replace').decode('ascii')
+        raise HTTPException(status_code=400, detail=f"Failed to convert image: {error_msg}")
+
+
 @app.post("/api/compress")
 async def compress_image(
     file: UploadFile = File(...),
