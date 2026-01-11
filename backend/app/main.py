@@ -170,14 +170,27 @@ async def convert_image_format(
             else:
                 img = img.convert("RGB")
         
-        # Convert image to bytes
+        # Convert image to bytes with robust error handling
         quality = 95 if format_upper != "PNG" else None
-        converted_bytes = convert_image_to_bytes(
-            img,
-            format_upper,
-            quality=quality or 95,
-            strip_exif=strip_exif
-        )
+        
+        # First attempt: try with strip_exif setting
+        try:
+            converted_bytes = convert_image_to_bytes(
+                img,
+                format_upper,
+                quality=quality or 95,
+                strip_exif=strip_exif
+            )
+        except (UnicodeEncodeError, UnicodeDecodeError, LookupError) as encoding_error:
+            # If encoding fails, force strip EXIF and retry
+            if not strip_exif:
+                warnings.append("Metadata stripped due to encoding issues")
+            converted_bytes = convert_image_to_bytes(
+                img,
+                format_upper,
+                quality=quality or 95,
+                strip_exif=True
+            )
         
         # Generate filename
         original_name = file.filename or "image"

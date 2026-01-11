@@ -96,3 +96,51 @@ export async function compressImage(
     filename,
   };
 }
+
+export async function convertImage(
+  file: File,
+  outputFormat: string,
+  stripExif: boolean = false
+): Promise<import("@/types/api").ConvertResult> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("output_format", outputFormat);
+  formData.append("strip_exif", stripExif.toString());
+
+  const response = await fetch(`${API_BASE_URL}/api/convert`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: "Unknown error" }));
+    throw new ApiError(response.status, error.detail || "Conversion failed");
+  }
+
+  const blob = await response.blob();
+  const width = parseInt(response.headers.get("X-Width") || "0", 10);
+  const height = parseInt(response.headers.get("X-Height") || "0", 10);
+  const size_bytes = parseInt(response.headers.get("X-Size-Bytes") || "0", 10);
+  const format = response.headers.get("X-Format") || "JPEG";
+  const warningsHeader = response.headers.get("X-Warnings");
+  const warnings = warningsHeader ? JSON.parse(warningsHeader) : [];
+  
+  // Extract filename from Content-Disposition header
+  const contentDisposition = response.headers.get("Content-Disposition");
+  let filename = "converted_image.jpg";
+  if (contentDisposition) {
+    const filenameMatch = contentDisposition.match(/filename="(.+)"/);    if (filenameMatch) {
+      filename = filenameMatch[1];
+    }
+  }
+
+  return {
+    blob,
+    width,
+    height,
+    size_bytes,
+    format,
+    warnings,
+    filename,
+  };
+}

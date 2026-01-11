@@ -50,20 +50,22 @@ def convert_image_to_bytes(img: Image.Image, format: str, quality: int = 85, str
     """Convert PIL Image to bytes with specified format and quality."""
     output = BytesIO()
     
-    # Create a clean copy without problematic metadata if strip_exif is True
-    if strip_exif:
+    # Create a clean copy without problematic metadata
+    if strip_exif or True:  # Always create clean copy to avoid encoding issues
         try:
-            # More robust way to strip metadata - convert to numpy-like array and back
+            # Strip all metadata by creating a new image
             img_array = list(img.getdata())
             clean_img = Image.new(img.mode, img.size)
             clean_img.putdata(img_array)
             img = clean_img
         except Exception:
-            # If that fails, try simple copy
+            # If that fails, try simple copy without metadata
             try:
-                img = img.copy()
+                clean_img = Image.new(img.mode, img.size)
+                clean_img.paste(img)
+                img = clean_img
             except:
-                pass  # Use original if copy fails
+                pass  # Use original if both fail
     
     save_kwargs = {}
     
@@ -87,32 +89,31 @@ def convert_image_to_bytes(img: Image.Image, format: str, quality: int = 85, str
         save_kwargs["quality"] = quality
         save_kwargs["method"] = 6  # Best compression
     
+    # Always force empty EXIF to avoid encoding issues
+    save_kwargs["exif"] = b""
+    
     # Save without EXIF and other metadata to avoid encoding issues
     try:
-        if strip_exif:
-            save_kwargs["exif"] = b""  # Force empty EXIF
         img.save(output, format=format, **save_kwargs)
-    except (UnicodeEncodeError, UnicodeDecodeError, LookupError) as e:
-        # If encoding fails, strip all metadata and try again
+    except (UnicodeEncodeError, UnicodeDecodeError, LookupError, KeyError) as e:
+        # If encoding fails, use minimal save options
+        output = BytesIO()
         try:
             save_kwargs.clear()
             if format.upper() in ["JPEG", "JPG"]:
-                save_kwargs["quality"] = quality
-                save_kwargs["optimize"] = True
-            elif format.upper() == "PNG":
-                save_kwargs["optimize"] = True
-            elif format.upper() == "WEBP":
-                save_kwargs["quality"] = quality
-                save_kwargs["method"] = 6
-            save_kwargs["exif"] = b""
-            img.save(output, format=format, **save_kwargs)
-        except Exception:
-            # Last resort: save with minimal options
-            output = BytesIO()
-            if format.upper() in ["JPEG", "JPG"]:
                 img.save(output, format="JPEG", quality=quality)
+            elif format.upper() == "PNG":
+                img.save(output, format="PNG")
+            elif format.upper() == "WEBP":
+                img.save(output, format="WEBP", quality=quality)
             else:
                 img.save(output, format=format)
+        except Exception:
+            # Last resort: ensure RGB and save as JPEG
+            output = BytesIO()
+            if img.mode not in ("RGB", "L"):
+                img = img.convert("RGB")
+            img.save(output, format="JPEG" if format.upper() in ["JPEG", "JPG"] else format, quality=quality)
     except Exception as e:
         # Catch any other exceptions and try simple save
         output = BytesIO()

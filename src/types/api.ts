@@ -34,3 +34,18 @@ export interface CompressResult {
   warnings: string[];
   filename: string;
 }
+
+export interface ConvertRequest {
+  output_format: "jpeg" | "png" | "webp" | "bmp" | "gif" | "tiff";
+  strip_exif?: boolean;
+}
+
+export interface ConvertResult {
+  blob: Blob;
+  width: number;
+  height: number;
+  size_bytes: number;
+  format: string;
+  warnings: string[];
+  filename: string;
+}
